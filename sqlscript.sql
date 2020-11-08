@@ -58,6 +58,30 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION delete_psm() RETURNS trigger AS $$
+DECLARE
+  pais_id int;
+  departamento_id int;
+BEGIN
+
+  SELECT id_departamento FROM departamento WHERE (departamento.departamento=old.departamento AND departamento.provincia=old.provincia)INTO departamento_id;
+  delete from localidad where id_departamento = departamento_id;
+  IF NOT EXISTS(SELECT * FROM aux WHERE  departamento= old.departamento) THEN
+    delete from departamento where id_departamento = departamento_id ;
+  END IF;
+    
+   
+    RETURN null;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER delete_handler after delete ON aux
+FOR EACH ROW 
+EXECUTE PROCEDURE delete_psm();
+
+
 ------------------------------------------- DATA IMPORT -------------------------------------------
 
 CREATE VIEW csv_view AS(
@@ -76,3 +100,7 @@ CREATE TRIGGER insert_csv_row INSTEAD OF INSERT ON csv_view
 FOR EACH ROW EXECUTE PROCEDURE insert_csv_row();
 
 COPY csv_view FROM 'C:\Users\matig\Desktop\localidades.csv' (FORMAT CSV, HEADER);
+
+
+
+
