@@ -76,7 +76,7 @@ CREATE VIEW csv_view AS(
 CREATE TRIGGER insert_csv_row INSTEAD OF INSERT ON csv_view
 FOR EACH ROW EXECUTE PROCEDURE insert_csv_row();
 
-COPY csv_view FROM 'C:\Users\matig\Desktop\localidades.csv' (FORMAT CSV, HEADER);
+COPY csv_view FROM 'INGRESE_DIRECCION_CSV' (FORMAT CSV, HEADER);
 
 ------------------------------------------- DATA DELETE -------------------------------------------
 
