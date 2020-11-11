@@ -34,26 +34,35 @@ CREATE TABLE localidad (
 CREATE OR REPLACE FUNCTION insert_csv_row() RETURNS trigger AS $$
 DECLARE
 	pais_id int;
-    departamento_id int;
+  departamento_id int;
+  localidad_nombre_upper text;
+  departamento_upper text;
+  pais_upper text;
 BEGIN
-	IF NOT EXISTS(SELECT * FROM pais WHERE pais.pais=NEW.pais) THEN
-		INSERT into pais (pais) VALUES(New.pais);
+  localidad_nombre_upper := upper(NEW.nombre);
+  departamento_upper := upper(New.departamento);
+  pais_upper := upper(NEW.pais);
+	IF NOT EXISTS(SELECT * FROM pais WHERE pais.pais=pais_upper) THEN
+		INSERT into pais (pais) VALUES (pais_upper);
     END IF;
 
     IF NOT EXISTS(SELECT * FROM provincia WHERE provincia.provincia=NEW.provincia) THEN
-        SELECT id_pais FROM pais WHERE pais.pais=New.pais INTO pais_id;
+        SELECT id_pais FROM pais WHERE pais.pais=pais_upper INTO pais_id;
         INSERT into provincia(provincia,id_pais) VALUES(NEW.provincia,pais_id);
     END IF;
 
-    IF NOT EXISTS(SELECT * FROM departamento WHERE departamento.departamento=NEW.departamento and departamento.provincia=New.provincia) THEN
-        INSERT into departamento(departamento,provincia) VALUES(New.departamento,NEW.provincia);
+    IF NOT EXISTS(SELECT * FROM departamento WHERE departamento.departamento=departamento_upper and departamento.provincia=New.provincia) THEN
+        INSERT into departamento(departamento,provincia) VALUES(departamento_upper,NEW.provincia);
     End IF;
 
-    SELECT id_departamento FROM departamento WHERE (departamento.departamento=New.departamento AND departamento.provincia=New.provincia)INTO departamento_id;
-    IF NOT EXISTS(SELECT * FROM localidad WHERE localidad.nombre=NEW.nombre and localidad.id_departamento=departamento_id) THEN
-    	 INSERT INTO localidad (nombre,canthab,id_departamento) VALUES(New.nombre,new.canthab,departamento_id);
+    SELECT id_departamento FROM departamento WHERE (departamento.departamento=departamento_upper AND departamento.provincia=New.provincia)INTO departamento_id;
+    IF NOT EXISTS(SELECT * FROM localidad WHERE localidad.nombre=localidad_nombre_upper and localidad.id_departamento=departamento_id) THEN
+    	 INSERT INTO localidad (nombre,canthab,id_departamento) VALUES(localidad_nombre_upper,new.canthab,departamento_id);
     ELSE
-    	RAISE 'localidad with that name already exists';
+      update localidad
+      set canthab = new.canthab
+      where id_departamento = departamento_id and nombre = localidad_nombre_upper;
+    	RAISE notice 'Se actualizó una localidad';
     End IF;
 
 
@@ -76,7 +85,7 @@ CREATE VIEW csv_view AS(
 CREATE TRIGGER insert_csv_row INSTEAD OF INSERT ON csv_view
 FOR EACH ROW EXECUTE PROCEDURE insert_csv_row();
 
-COPY csv_view FROM 'INGRESE_DIRECCION_CSV' (FORMAT CSV, HEADER);
+COPY csv_view FROM 'INGRESE_DIRECCION_CSV' (FORMAT CSV, HEADER, ENCODING 'UTF8');
 
 ------------------------------------------- DATA DELETE -------------------------------------------
 
