@@ -30,38 +30,33 @@ CREATE TABLE localidad (
  );
 
 ------------------------------------------- DATA IMPORT -------------------------------------------
+CREATE EXTENSION IF NOT EXISTS unaccent
 
 CREATE OR REPLACE FUNCTION insert_csv_row() RETURNS trigger AS $$
 DECLARE
 	pais_id int;
-  departamento_id int;
-  localidad_nombre_upper text;
-  departamento_upper text;
-  pais_upper text;
+    departamento_id int;
 BEGIN
-  localidad_nombre_upper := upper(NEW.nombre);
-  departamento_upper := upper(New.departamento);
-  pais_upper := upper(NEW.pais);
-	IF NOT EXISTS(SELECT * FROM pais WHERE pais.pais=pais_upper) THEN
-		INSERT into pais (pais) VALUES (pais_upper);
+	IF NOT EXISTS(SELECT * FROM pais WHERE lower(unaccent(pais.pais)) = LOWER(NEW.pais)) THEN
+		INSERT into pais (pais) VALUES(New.pais);
     END IF;
 
-    IF NOT EXISTS(SELECT * FROM provincia WHERE provincia.provincia=NEW.provincia) THEN
-        SELECT id_pais FROM pais WHERE pais.pais=pais_upper INTO pais_id;
-        INSERT into provincia(provincia,id_pais) VALUES(NEW.provincia,pais_id);
+    IF NOT EXISTS(SELECT * FROM provincia WHERE provincia.provincia = NEW.provincia) THEN
+        SELECT id_pais FROM pais WHERE lower(unaccent(pais.pais)) = LOWER(unaccent(New.pais)) INTO pais_id;
+        INSERT into provincia(provincia,id_pais) VALUES (NEW.provincia, pais_id);
     END IF;
 
-    IF NOT EXISTS(SELECT * FROM departamento WHERE departamento.departamento=departamento_upper and departamento.provincia=New.provincia) THEN
-        INSERT into departamento(departamento,provincia) VALUES(departamento_upper,NEW.provincia);
+    IF NOT EXISTS(SELECT * FROM departamento WHERE lower(unaccent(departamento.departamento)) = LOWER(unaccent(NEW.departamento)) and departamento.provincia = New.provincia) THEN
+        INSERT into departamento(departamento,provincia) VALUES(New.departamento,NEW.provincia);
     End IF;
 
-    SELECT id_departamento FROM departamento WHERE (departamento.departamento=departamento_upper AND departamento.provincia=New.provincia)INTO departamento_id;
-    IF NOT EXISTS(SELECT * FROM localidad WHERE localidad.nombre=localidad_nombre_upper and localidad.id_departamento=departamento_id) THEN
-    	 INSERT INTO localidad (nombre,canthab,id_departamento) VALUES(localidad_nombre_upper,new.canthab,departamento_id);
+    SELECT id_departamento FROM departamento WHERE lower(unaccent(departamento.departamento)) = LOWER(unaccent(New.departamento)) AND departamento.provincia = New.provincia INTO departamento_id;
+    IF NOT EXISTS(SELECT * FROM localidad WHERE lower(unaccent(localidad.nombre)) = LOWER(unaccent(NEW.nombre)) and localidad.id_departamento = departamento_id) THEN
+    	 INSERT INTO localidad (nombre, canthab, id_departamento) VALUES(New.nombre, new.canthab, departamento_id);
     ELSE
-      update localidad
-      set canthab = new.canthab
-      where id_departamento = departamento_id and nombre = localidad_nombre_upper;
+        update localidad
+        set canthab = new.canthab
+        where id_departamento = departamento_id and lower(unaccent(nombre)) = LOWER(unaccent(New.nombre));
     	RAISE notice 'Se actualizó una localidad';
     End IF;
 
@@ -94,9 +89,11 @@ DECLARE
     locId int; depId int; paisId int;
 BEGIN
 
-    SELECT id_pais FROM pais WHERE pais.pais=old.pais INTO paisId;
-    SELECT id_departamento FROM departamento WHERE departamento.departamento=old.departamento AND provincia=old.provincia INTO depId;
-    SELECT id_localidad FROM localidad WHERE localidad.nombre=old.nombre AND localidad.id_departamento=depId INTO locId;
+    SELECT id_pais FROM pais WHERE pais.pais = old.pais INTO paisId;
+    SELECT id_departamento FROM departamento WHERE departamento.departamento = old.departamento 
+    AND provincia = old.provincia INTO depId;
+    SELECT id_localidad FROM localidad WHERE localidad.nombre = old.nombre 
+    AND localidad.id_departamento = depId INTO locId;
 
     DELETE FROM localidad WHERE localidad.id_localidad=locId;
 
