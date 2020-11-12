@@ -30,7 +30,7 @@ CREATE TABLE localidad (
  );
 
 ------------------------------------------- DATA IMPORT -------------------------------------------
-CREATE EXTENSION IF NOT EXISTS unaccent
+CREATE EXTENSION IF NOT EXISTS unaccent;
 
 CREATE OR REPLACE FUNCTION insert_csv_row() RETURNS trigger AS $$
 DECLARE
